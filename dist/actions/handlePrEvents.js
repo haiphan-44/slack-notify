@@ -90,10 +90,6 @@ const handlePrReopened = async ({ pullRequest, repository }) => {
 };
 const handlePrMerged = async ({ pullRequest, repository }) => {
     console.log(`PR merged by user: ${pullRequest.user.login}`);
-    console.log('[DEBUG] handlePrMerged', JSON.stringify({
-        pullRequest,
-        repository
-    }, null, 2));
     const slackChannelId = core.getInput('slack-channel-id');
     const slackBotToken = core.getInput('slack-bot-token');
     const prCreatorLogin = pullRequest.user?.login;

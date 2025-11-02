@@ -39590,10 +39590,6 @@ const handlePrReopened = async ({ pullRequest, repository }) => {
 };
 const handlePrMerged = async ({ pullRequest, repository }) => {
     console.log(`PR merged by user: ${pullRequest.user.login}`);
-    console.log('[DEBUG] handlePrMerged', JSON.stringify({
-        pullRequest,
-        repository
-    }, null, 2));
     const slackChannelId = core.getInput('slack-channel-id');
     const slackBotToken = core.getInput('slack-bot-token');
     const prCreatorLogin = pullRequest.user?.login;
@@ -41233,12 +41229,14 @@ const getUserEmail = async ({ username }) => {
         const { data: user } = await octokit.rest.users.getByUsername({
             username
         });
+        core.warning(`[getUserEmail] user: ${JSON.stringify(user, null, 2)}`);
         // Public email may be null if user has set it to private
         if (user.email) {
             return user.email;
         }
         try {
             const { data: authUser } = await octokit.rest.users.getAuthenticated();
+            core.warning(`[getUserEmail] authUser: ${JSON.stringify(authUser, null, 2)}`);
             if (authUser.login === username && authUser.email) {
                 return authUser.email;
             }
