@@ -7,10 +7,11 @@ const createSlackMessageOnMergedPr = async ({ channelId, slackBotToken, pullRequ
     const slackClient = new web_api_1.WebClient(slackBotToken);
     const createdAtTime = Math.round(new Date(pullRequest.created_at).getTime() / 1000);
     const updatedAtTime = Math.round(new Date(pullRequest.updated_at).getTime() / 1000);
-    const slackUserId = createdPullRequestSlackUser?.id;
-    const prOpenedBy = slackUserId ? `<@${slackUserId}>` : pullRequest.user.login;
-    const mergedBy = mergedBySlackUser?.id ? `<@${mergedBySlackUser.id}>` : prOpenedBy;
-    const text = `Hi ${prOpenedBy}, <${pullRequest.html_url}|your PR> has been merged! :white_check_mark:`;
+    const openedById = createdPullRequestSlackUser?.id;
+    const mergedById = mergedBySlackUser?.id;
+    const prOpenedBy = openedById ? `<@${openedById}>` : pullRequest.user.login;
+    const mergedBy = mergedById ? `<@${mergedById}>` : pullRequest.merged_by?.login;
+    const text = `Hi ${prOpenedBy}, your PR <${pullRequest.html_url}|has been merged successfully> :white_check_mark:`;
     try {
         const messagePayload = {
             channel: channelId,
@@ -54,29 +55,19 @@ const createSlackMessageOnMergedPr = async ({ channelId, slackBotToken, pullRequ
                                 }
                             ]
                         },
-                        mergedBySlackUser
-                            ? {
-                                type: 'section',
-                                fields: [
-                                    {
-                                        type: 'mrkdwn',
-                                        text: `*Updated:*\n<!date^${updatedAtTime}^{date_short} at {time}|Fallback Text>`
-                                    },
-                                    {
-                                        type: 'mrkdwn',
-                                        text: `*Merged by:*\n${mergedBy}`
-                                    }
-                                ]
-                            }
-                            : {
-                                type: 'section',
-                                fields: [
-                                    {
-                                        type: 'mrkdwn',
-                                        text: `*Updated:*\n<!date^${updatedAtTime}^{date_short} at {time}|Fallback Text>`
-                                    }
-                                ]
-                            },
+                        {
+                            type: 'section',
+                            fields: [
+                                {
+                                    type: 'mrkdwn',
+                                    text: `*Updated:*\n<!date^${updatedAtTime}^{date_short} at {time}|Fallback Text>`
+                                },
+                                {
+                                    type: 'mrkdwn',
+                                    text: `*Merged by:*\n${mergedBy}`
+                                }
+                            ]
+                        },
                         {
                             type: 'actions',
                             elements: [

@@ -11,6 +11,7 @@ export type PullRequestPayload = Omit<
     | 'changed_files'
     | 'draft'
     | 'merged'
+    | 'merged_by'
     | 'html_url'
     | 'updated_at'
   >,
