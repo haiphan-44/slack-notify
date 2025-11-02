@@ -6,6 +6,26 @@ export const generateContent = async (
   copilotQueryBuilder: any,
   callback: (response: string, done: boolean, isError: boolean) => void
 ): Promise<string> => {
+  // Validate token exists
+  if (!copilotQueryBuilder.copilotRequest?.token) {
+    throw new Error('Copilot token is missing or invalid')
+  }
+
+  // Sanitize token: trim whitespace and remove any newlines/carriage returns
+  const token = copilotQueryBuilder.copilotRequest.token.trim().replace(/\n/g, '').replace(/\r/g, '')
+
+  if (!token || token === '') {
+    throw new Error('Copilot token is empty after sanitization')
+  }
+
+  // Validate token looks like a JWT (should have dots separating parts)
+  if (!token.includes('.')) {
+    console.warn('⚠️ generateContent - Token does not appear to be a valid JWT format')
+  }
+
+  console.log('🔑 generateContent - Token length:', token.length)
+  console.log('🔑 generateContent - Token preview:', token.substring(0, 10) + '...')
+
   const request = await generateAskRequest(copilotQueryBuilder.history)
   const body = JSON.stringify(request)
   const options = {
@@ -13,7 +33,7 @@ export const generateContent = async (
     path: '/chat/completions',
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${copilotQueryBuilder.copilotRequest.token}`,
+      Authorization: `Bearer ${token}`,
       'vscode-sessionid': copilotQueryBuilder.copilotRequest.sessionId,
       'x-request-id': copilotQueryBuilder.copilotRequest.uuid,
       'vscode-machineid': copilotQueryBuilder.copilotRequest.machineId,

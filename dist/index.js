@@ -40050,6 +40050,21 @@ exports.generateContent = void 0;
 const https = __importStar(__nccwpck_require__(5692));
 const utils_1 = __nccwpck_require__(1891);
 const generateContent = async (copilotQueryBuilder, callback) => {
+    // Validate token exists
+    if (!copilotQueryBuilder.copilotRequest?.token) {
+        throw new Error('Copilot token is missing or invalid');
+    }
+    // Sanitize token: trim whitespace and remove any newlines/carriage returns
+    const token = copilotQueryBuilder.copilotRequest.token.trim().replace(/\n/g, '').replace(/\r/g, '');
+    if (!token || token === '') {
+        throw new Error('Copilot token is empty after sanitization');
+    }
+    // Validate token looks like a JWT (should have dots separating parts)
+    if (!token.includes('.')) {
+        console.warn('⚠️ generateContent - Token does not appear to be a valid JWT format');
+    }
+    console.log('🔑 generateContent - Token length:', token.length);
+    console.log('🔑 generateContent - Token preview:', token.substring(0, 10) + '...');
     const request = await (0, utils_1.generateAskRequest)(copilotQueryBuilder.history);
     const body = JSON.stringify(request);
     const options = {
@@ -40057,7 +40072,7 @@ const generateContent = async (copilotQueryBuilder, callback) => {
         path: '/chat/completions',
         method: 'POST',
         headers: {
-            Authorization: `Bearer ${copilotQueryBuilder.copilotRequest.token}`,
+            Authorization: `Bearer ${token}`,
             'vscode-sessionid': copilotQueryBuilder.copilotRequest.sessionId,
             'x-request-id': copilotQueryBuilder.copilotRequest.uuid,
             'vscode-machineid': copilotQueryBuilder.copilotRequest.machineId,
@@ -40171,14 +40186,20 @@ const removeUntilData = (s) => {
     return index === -1 ? s : s.substring(index + 'data: '.length);
 };
 const getToken = () => {
-    console.log('copilot token: ', process.env.COPILOT_TOKEN);
+    const copilotToken = 'REMOVED_SECRET';
+    core.warning('[DEBUG] copilotToken ');
+    if (!copilotToken || copilotToken.trim() === '') {
+        return Promise.reject(new Error('COPILOT_TOKEN environment variable is not set or is empty'));
+    }
+    console.log('🔑 getToken - COPILOT_TOKEN length:', copilotToken.length);
+    console.log('🔑 getToken - COPILOT_TOKEN preview:', copilotToken.substring(0, 10) + '...');
     return new Promise((resolve, reject) => {
         const options = {
             hostname: 'api.github.com',
             path: '/copilot_internal/v2/token',
             method: 'GET',
             headers: {
-                Authorization: `token ${process.env.COPILOT_TOKEN}`,
+                Authorization: `token ${copilotToken.trim()}`,
                 Accept: 'application/json',
                 'Editor-Version': 'vscode/1.85.1',
                 'Editor-Plugin-Version': 'copilot-chat/0.12.2023120701',
@@ -40191,8 +40212,30 @@ const getToken = () => {
                 data += chunk;
             });
             res.on('end', () => {
-                const tokenResponse = JSON.parse(data);
-                resolve(tokenResponse.token);
+                if (res.statusCode && res.statusCode >= 400) {
+                    console.error('❌ getToken - HTTP Error:', res.statusCode, data);
+                    reject(new Error(`Failed to get Copilot token: HTTP ${res.statusCode}: ${data.substring(0, 200)}`));
+                    return;
+                }
+                try {
+                    const tokenResponse = JSON.parse(data);
+                    if (!tokenResponse.token || tokenResponse.token.trim() === '') {
+                        reject(new Error('Copilot token response is empty'));
+                        return;
+                    }
+                    // Sanitize token: trim whitespace and remove any newlines
+                    const sanitizedToken = tokenResponse.token.trim().replace(/\n/g, '').replace(/\r/g, '');
+                    if (!sanitizedToken || sanitizedToken === '') {
+                        reject(new Error('Copilot token is empty after sanitization'));
+                        return;
+                    }
+                    console.log('✅ getToken - Token retrieved, length:', sanitizedToken.length);
+                    resolve(sanitizedToken);
+                }
+                catch (error) {
+                    console.error('❌ getToken - Failed to parse response:', error);
+                    reject(new Error(`Failed to parse token response: ${error}`));
+                }
             });
         });
         req.on('error', (error) => {
