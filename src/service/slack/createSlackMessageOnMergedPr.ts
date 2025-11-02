@@ -1,3 +1,4 @@
+import * as core from '@actions/core'
 import { Repository } from '@octokit/webhooks-types'
 import { ChatPostMessageArguments, WebClient } from '@slack/web-api'
 import { User } from '@slack/web-api/dist/types/response/UsersInfoResponse'
@@ -110,11 +111,10 @@ export const createSlackMessageOnMergedPr = async ({
     }
 
     const response = await slackClient.chat.postMessage(messagePayload)
-    console.log({ response })
     if (!response.ts) throw new Error('Something wrong with send slack message')
     return response
   } catch (error: any) {
-    console.log('error:', error)
-    throw new Error(error.message)
+    core.error(`[createSlackMessageOnMergedPr] Failed to create slack message on merged PR: ${error.message}`)
+    throw error
   }
 }

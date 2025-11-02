@@ -41229,20 +41229,17 @@ const getUserEmail = async ({ username }) => {
         const { data: user } = await octokit.rest.users.getByUsername({
             username
         });
-        core.warning(`[getUserEmail] user: ${JSON.stringify(user, null, 2)}`);
         // Public email may be null if user has set it to private
         if (user.email) {
             return user.email;
         }
         try {
             const { data: authUser } = await octokit.rest.users.getAuthenticated();
-            core.warning(`[getUserEmail] authUser: ${JSON.stringify(authUser, null, 2)}`);
             if (authUser.login === username && authUser.email) {
                 return authUser.email;
             }
         }
         catch (error) {
-            // Silently fail - we don't have permission or user is not authenticated
             core.debug(`Could not get authenticated user email: ${error}`);
         }
         return null;
@@ -41576,12 +41573,46 @@ exports.createSlackMessage = createSlackMessage;
 /***/ }),
 
 /***/ 9244:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.createSlackMessageOnMergedPr = void 0;
+const core = __importStar(__nccwpck_require__(9999));
 const web_api_1 = __nccwpck_require__(6869);
 const constants_1 = __nccwpck_require__(159);
 const createSlackMessageOnMergedPr = async ({ channelId, slackBotToken, pullRequest, createdPullRequestSlackUser, mergedBySlackUser, repository }) => {
@@ -41669,14 +41700,13 @@ const createSlackMessageOnMergedPr = async ({ channelId, slackBotToken, pullRequ
             ]
         };
         const response = await slackClient.chat.postMessage(messagePayload);
-        console.log({ response });
         if (!response.ts)
             throw new Error('Something wrong with send slack message');
         return response;
     }
     catch (error) {
-        console.log('error:', error);
-        throw new Error(error.message);
+        core.error(`[createSlackMessageOnMergedPr] Failed to create slack message on merged PR: ${error.message}`);
+        throw error;
     }
 };
 exports.createSlackMessageOnMergedPr = createSlackMessageOnMergedPr;
