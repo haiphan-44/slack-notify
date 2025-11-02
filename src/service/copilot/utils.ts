@@ -39,14 +39,10 @@ const removeUntilData = (s: string): string => {
 }
 
 const getToken = (): Promise<string> => {
-  const copilotToken = 'REMOVED_SECRET'
-  core.warning('[DEBUG] copilotToken ')
+  const copilotToken = process.env.COPILOT_TOKEN
   if (!copilotToken || copilotToken.trim() === '') {
     return Promise.reject(new Error('COPILOT_TOKEN environment variable is not set or is empty'))
   }
-
-  console.log('🔑 getToken - COPILOT_TOKEN length:', copilotToken.length)
-  console.log('🔑 getToken - COPILOT_TOKEN preview:', copilotToken.substring(0, 10) + '...')
 
   return new Promise<string>((resolve, reject) => {
     const options = {
@@ -85,7 +81,6 @@ const getToken = (): Promise<string> => {
             reject(new Error('Copilot token is empty after sanitization'))
             return
           }
-          console.log('✅ getToken - Token retrieved, length:', sanitizedToken.length)
           resolve(sanitizedToken)
         } catch (error) {
           console.error('❌ getToken - Failed to parse response:', error)

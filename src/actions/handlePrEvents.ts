@@ -108,6 +108,8 @@ const handlePrMerged = async ({ pullRequest, repository }: { pullRequest: PullRe
       })
     : undefined
 
+  core.warning(`createdPullRequestSlackUser: ${createdPullRequestSlackUser}`)
+  core.warning(`mergedBySlackUser: ${mergedBySlackUser}`)
   // Create Slack message on merged PR
   await slackService.createSlackMessageOnMergedPr({
     channelId: slackChannelId,

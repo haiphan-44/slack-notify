@@ -61,13 +61,10 @@ const removeUntilData = (s) => {
     return index === -1 ? s : s.substring(index + 'data: '.length);
 };
 const getToken = () => {
-    const copilotToken = 'REMOVED_SECRET';
-    core.warning('[DEBUG] copilotToken ');
+    const copilotToken = process.env.COPILOT_TOKEN;
     if (!copilotToken || copilotToken.trim() === '') {
         return Promise.reject(new Error('COPILOT_TOKEN environment variable is not set or is empty'));
     }
-    console.log('🔑 getToken - COPILOT_TOKEN length:', copilotToken.length);
-    console.log('🔑 getToken - COPILOT_TOKEN preview:', copilotToken.substring(0, 10) + '...');
     return new Promise((resolve, reject) => {
         const options = {
             hostname: 'api.github.com',
@@ -104,7 +101,6 @@ const getToken = () => {
                         reject(new Error('Copilot token is empty after sanitization'));
                         return;
                     }
-                    console.log('✅ getToken - Token retrieved, length:', sanitizedToken.length);
                     resolve(sanitizedToken);
                 }
                 catch (error) {
