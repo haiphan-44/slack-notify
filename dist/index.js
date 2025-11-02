@@ -40052,7 +40052,6 @@ const utils_1 = __nccwpck_require__(1891);
 const generateContent = async (copilotQueryBuilder, callback) => {
     const request = await (0, utils_1.generateAskRequest)(copilotQueryBuilder.history);
     const body = JSON.stringify(request);
-    console.log('body: ', body);
     const options = {
         hostname: 'api.githubcopilot.com',
         path: '/chat/completions',
@@ -40076,11 +40075,19 @@ const generateContent = async (copilotQueryBuilder, callback) => {
     };
     return new Promise((resolve, reject) => {
         const req = https.request(options, (res) => {
+            console.log('📡 generateContent - Status:', res.statusCode);
+            console.log('📡 generateContent - Headers:', res.headers);
             let data = '';
             res.on('data', (chunk) => {
                 data += chunk;
             });
             res.on('end', () => {
+                console.log('📡 generateContent - Response received, length:', data.length);
+                if (res.statusCode && res.statusCode >= 400) {
+                    console.error('❌ generateContent - HTTP Error:', res.statusCode, data.substring(0, 500));
+                    reject(new Error(`HTTP ${res.statusCode}: ${data.substring(0, 200)}`));
+                    return;
+                }
                 resolve((0, utils_1.parseResponse)(data, callback));
             });
         });
@@ -40209,18 +40216,25 @@ const generateAskRequest = (history) => {
 };
 exports.generateAskRequest = generateAskRequest;
 const parseResponse = (data, callback) => {
+    console.log('📥 parseResponse - raw data length:', data.length);
+    console.log('📥 parseResponse - raw data preview:', data.substring(0, 500));
     const lines = data.split('\n');
     let isError = false;
     let reply = '';
     for (const line of lines) {
         const s = line.trim();
+        if (!s) {
+            continue;
+        }
         if (s.startsWith('{"error":')) {
             const error = JSON.parse(s);
             reply = error.error.message;
             isError = true;
+            console.log('❌ parseResponse - Error detected:', reply);
             break;
         }
         if (s.includes('[DONE]')) {
+            console.log('✅ parseResponse - [DONE] marker found');
             break;
         }
         if (!s.startsWith('data:')) {
@@ -40228,12 +40242,23 @@ const parseResponse = (data, callback) => {
         }
         const jsonExtract = removeUntilData(s);
         const message = jsonParse(jsonExtract);
-        if (message.choices.length > 0 && message.choices[0].delta.content) {
-            const txt = message.choices[0].delta.content;
+        if (!message) {
+            console.warn('⚠️ parseResponse - Failed to parse JSON:', jsonExtract.substring(0, 200));
+            continue;
+        }
+        if (!message.choices || message.choices.length === 0) {
+            console.warn('⚠️ parseResponse - No choices in message');
+            continue;
+        }
+        const delta = message.choices[0]?.delta;
+        if (delta && delta.content) {
+            const txt = delta.content;
             reply += txt;
             callback(reply, false, isError);
         }
     }
+    console.log('📤 parseResponse - Final reply length:', reply.length);
+    console.log('📤 parseResponse - Final reply:', reply.substring(0, 200));
     callback(reply, true, isError);
     return reply;
 };
@@ -40798,17 +40823,20 @@ const createPrTitle = async ({ prTemplateContent, prevTitle }) => {
     const request = await (0, utils_1.generateCopilotRequest)();
     copilotQueryBuilder.copilotRequest = request;
     let hasError = false;
-    const response = await (0, generateContent_1.generateContent)(copilotQueryBuilder, (response, done, isError) => {
-        console.log('🚀 --> response:', response);
+    let finalResponse = '';
+    const response = await (0, generateContent_1.generateContent)(copilotQueryBuilder, (chunkResponse, done, isError) => {
+        console.log('🚀 createPrTitle callback - response:', chunkResponse.substring(0, 100), 'done:', done, 'isError:', isError);
         if (isError) {
-            console.log('Error: ', response);
+            console.log('❌ createPrTitle callback - Error: ', chunkResponse);
             hasError = true;
             return;
         }
         if (done) {
-            return response;
+            finalResponse = chunkResponse;
+            console.log('✅ createPrTitle callback - Final response received:', finalResponse.substring(0, 200));
         }
     });
+    console.log('📋 createPrTitle - generateContent returned:', response.substring(0, 200));
     // If generation failed or returned empty, use previous title as fallback
     if (hasError || !response || response.trim() === '') {
         core.warning('PR title generation failed or returned empty, using previous title as fallback');

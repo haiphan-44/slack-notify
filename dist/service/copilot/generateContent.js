@@ -39,7 +39,6 @@ const utils_1 = require("~/service/copilot/utils");
 const generateContent = async (copilotQueryBuilder, callback) => {
     const request = await (0, utils_1.generateAskRequest)(copilotQueryBuilder.history);
     const body = JSON.stringify(request);
-    console.log('body: ', body);
     const options = {
         hostname: 'api.githubcopilot.com',
         path: '/chat/completions',
@@ -63,11 +62,19 @@ const generateContent = async (copilotQueryBuilder, callback) => {
     };
     return new Promise((resolve, reject) => {
         const req = https.request(options, (res) => {
+            console.log('📡 generateContent - Status:', res.statusCode);
+            console.log('📡 generateContent - Headers:', res.headers);
             let data = '';
             res.on('data', (chunk) => {
                 data += chunk;
             });
             res.on('end', () => {
+                console.log('📡 generateContent - Response received, length:', data.length);
+                if (res.statusCode && res.statusCode >= 400) {
+                    console.error('❌ generateContent - HTTP Error:', res.statusCode, data.substring(0, 500));
+                    reject(new Error(`HTTP ${res.statusCode}: ${data.substring(0, 200)}`));
+                    return;
+                }
                 resolve((0, utils_1.parseResponse)(data, callback));
             });
         });

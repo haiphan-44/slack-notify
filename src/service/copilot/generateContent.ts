@@ -8,7 +8,6 @@ export const generateContent = async (
 ): Promise<string> => {
   const request = await generateAskRequest(copilotQueryBuilder.history)
   const body = JSON.stringify(request)
-  console.log('body: ', body)
   const options = {
     hostname: 'api.githubcopilot.com',
     path: '/chat/completions',
@@ -33,11 +32,20 @@ export const generateContent = async (
 
   return new Promise<string>((resolve, reject) => {
     const req = https.request(options, (res) => {
+      console.log('📡 generateContent - Status:', res.statusCode)
+      console.log('📡 generateContent - Headers:', res.headers)
+
       let data = ''
       res.on('data', (chunk) => {
         data += chunk
       })
       res.on('end', () => {
+        console.log('📡 generateContent - Response received, length:', data.length)
+        if (res.statusCode && res.statusCode >= 400) {
+          console.error('❌ generateContent - HTTP Error:', res.statusCode, data.substring(0, 500))
+          reject(new Error(`HTTP ${res.statusCode}: ${data.substring(0, 200)}`))
+          return
+        }
         resolve(parseResponse(data, callback))
       })
     })

@@ -91,6 +91,9 @@ export const parseResponse = (
   data: string,
   callback: (response: string, done: boolean, isError: boolean) => void
 ): string => {
+  console.log('📥 parseResponse - raw data length:', data.length)
+  console.log('📥 parseResponse - raw data preview:', data.substring(0, 500))
+
   const lines = data.split('\n')
   let isError = false
   let reply = ''
@@ -98,14 +101,20 @@ export const parseResponse = (
   for (const line of lines) {
     const s = line.trim()
 
+    if (!s) {
+      continue
+    }
+
     if (s.startsWith('{"error":')) {
       const error: ErrorResponse = JSON.parse(s)
       reply = error.error.message
       isError = true
+      console.log('❌ parseResponse - Error detected:', reply)
       break
     }
 
     if (s.includes('[DONE]')) {
+      console.log('✅ parseResponse - [DONE] marker found')
       break
     }
 
@@ -114,15 +123,28 @@ export const parseResponse = (
     }
 
     const jsonExtract = removeUntilData(s)
-    const message: Message = jsonParse(jsonExtract)
+    const message: Message | null = jsonParse(jsonExtract)
 
-    if (message.choices.length > 0 && message.choices[0].delta.content) {
-      const txt = message.choices[0].delta.content as string
+    if (!message) {
+      console.warn('⚠️ parseResponse - Failed to parse JSON:', jsonExtract.substring(0, 200))
+      continue
+    }
+
+    if (!message.choices || message.choices.length === 0) {
+      console.warn('⚠️ parseResponse - No choices in message')
+      continue
+    }
+
+    const delta = message.choices[0]?.delta
+    if (delta && delta.content) {
+      const txt = delta.content as string
       reply += txt
       callback(reply, false, isError)
     }
   }
 
+  console.log('📤 parseResponse - Final reply length:', reply.length)
+  console.log('📤 parseResponse - Final reply:', reply.substring(0, 200))
   callback(reply, true, isError)
   return reply
 }

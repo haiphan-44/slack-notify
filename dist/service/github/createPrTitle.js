@@ -77,17 +77,20 @@ const createPrTitle = async ({ prTemplateContent, prevTitle }) => {
     const request = await (0, utils_1.generateCopilotRequest)();
     copilotQueryBuilder.copilotRequest = request;
     let hasError = false;
-    const response = await (0, generateContent_1.generateContent)(copilotQueryBuilder, (response, done, isError) => {
-        console.log('🚀 --> response:', response);
+    let finalResponse = '';
+    const response = await (0, generateContent_1.generateContent)(copilotQueryBuilder, (chunkResponse, done, isError) => {
+        console.log('🚀 createPrTitle callback - response:', chunkResponse.substring(0, 100), 'done:', done, 'isError:', isError);
         if (isError) {
-            console.log('Error: ', response);
+            console.log('❌ createPrTitle callback - Error: ', chunkResponse);
             hasError = true;
             return;
         }
         if (done) {
-            return response;
+            finalResponse = chunkResponse;
+            console.log('✅ createPrTitle callback - Final response received:', finalResponse.substring(0, 200));
         }
     });
+    console.log('📋 createPrTitle - generateContent returned:', response.substring(0, 200));
     // If generation failed or returned empty, use previous title as fallback
     if (hasError || !response || response.trim() === '') {
         core.warning('PR title generation failed or returned empty, using previous title as fallback');
