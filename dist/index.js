@@ -39538,7 +39538,7 @@ const core = __importStar(__nccwpck_require__(9999));
 const github = __importStar(__nccwpck_require__(5380));
 const prTitleHandle_1 = __nccwpck_require__(7659);
 const helper_1 = __nccwpck_require__(2727);
-const getPullRequestDetails_1 = __nccwpck_require__(6191);
+const getUserEmail_1 = __nccwpck_require__(8552);
 const slackService = __importStar(__nccwpck_require__(86));
 const utils_1 = __nccwpck_require__(7291);
 const handlePrEvents = async () => {
@@ -39596,34 +39596,32 @@ const handlePrMerged = async ({ pullRequest, repository }) => {
     }, null, 2));
     const slackChannelId = core.getInput('slack-channel-id');
     const slackBotToken = core.getInput('slack-bot-token');
-    const issueContext = {
-        owner: repository.owner.login,
-        repo: repository.name,
-        number: pullRequest.number
-    };
-    let fullPullRequest = pullRequest;
-    try {
-        fullPullRequest = await (0, getPullRequestDetails_1.getPullRequestDetails)({
-            pullNumber: pullRequest.number,
-            issueContext
-        });
-        console.log(`Fetched PR details - changed_files: ${fullPullRequest.changed_files}`);
+    const prCreatorLogin = pullRequest.user?.login;
+    if (!prCreatorLogin) {
+        core.error('Failed to get PR creator username');
+        return;
     }
-    catch (error) {
-        core.warning(`Failed to fetch PR details, using webhook payload: ${error}`);
-    }
+    const prCreatorEmail = await (0, getUserEmail_1.getUserEmail)({ username: prCreatorLogin });
+    const prCreatorGithubUser = prCreatorEmail || (0, helper_1.formatToBaseName)(prCreatorLogin);
     const createdPullRequestSlackUser = await (0, utils_1.convertCreatedPullRequestToSlackUser)({
-        githubUser: (0, helper_1.formatToBaseName)(fullPullRequest.user.login),
+        githubUser: prCreatorGithubUser,
         slackBotToken,
         slackChannelId
     });
-    const mergedBySlackUser = fullPullRequest.merged_by?.login
-        ? await (0, utils_1.convertCreatedPullRequestToSlackUser)({
-            githubUser: (0, helper_1.formatToBaseName)(fullPullRequest.merged_by.login),
-            slackBotToken,
-            slackChannelId
-        })
-        : undefined;
+    const mergedBySlackUserLogin = pullRequest.merged_by?.login;
+    if (!mergedBySlackUserLogin) {
+        core.error('Failed to get merged by username');
+        return;
+    }
+    const mergedByEmail = await (0, getUserEmail_1.getUserEmail)({ username: mergedBySlackUserLogin });
+    const mergedByGithubUser = mergedByEmail || (0, helper_1.formatToBaseName)(mergedBySlackUserLogin);
+    const mergedBySlackUser = await (0, utils_1.convertCreatedPullRequestToSlackUser)({
+        githubUser: mergedByGithubUser,
+        slackBotToken,
+        slackChannelId
+    });
+    core.warning(`prCreatorGithubUser: ${prCreatorGithubUser}`);
+    core.warning(`mergedByGithubUser: ${mergedByGithubUser}`);
     core.warning(`createdPullRequestSlackUser: ${createdPullRequestSlackUser}`);
     core.warning(`mergedBySlackUser: ${mergedBySlackUser}`);
     // Create Slack message on merged PR
@@ -39631,7 +39629,7 @@ const handlePrMerged = async ({ pullRequest, repository }) => {
         channelId: slackChannelId,
         slackBotToken,
         createdPullRequestSlackUser,
-        pullRequest: fullPullRequest,
+        pullRequest,
         repository,
         mergedBySlackUser
     });
@@ -41187,13 +41185,87 @@ exports.getPullRequestDetails = getPullRequestDetails;
 
 /***/ }),
 
+/***/ 8552:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getUserEmail = void 0;
+const core = __importStar(__nccwpck_require__(9999));
+const github = __importStar(__nccwpck_require__(5380));
+const getUserEmail = async ({ username }) => {
+    const octokit = github.getOctokit(process.env.GITHUB_TOKEN || '');
+    try {
+        const { data: user } = await octokit.rest.users.getByUsername({
+            username
+        });
+        // Public email may be null if user has set it to private
+        if (user.email) {
+            return user.email;
+        }
+        try {
+            const { data: authUser } = await octokit.rest.users.getAuthenticated();
+            if (authUser.login === username && authUser.email) {
+                return authUser.email;
+            }
+        }
+        catch (error) {
+            // Silently fail - we don't have permission or user is not authenticated
+            core.debug(`Could not get authenticated user email: ${error}`);
+        }
+        return null;
+    }
+    catch (error) {
+        core.warning(`Failed to fetch email for user ${username}: ${error}`);
+        return null;
+    }
+};
+exports.getUserEmail = getUserEmail;
+
+
+/***/ }),
+
 /***/ 3217:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.updatePrTitle = exports.updatePrContent = exports.postCommentOnPr = exports.getPullRequestDetails = exports.getPullRequestComments = exports.getPreviousTitle = exports.deleteCommentOnPr = exports.createPrTitle = exports.createPrCodeReviews = void 0;
+exports.updatePrTitle = exports.updatePrContent = exports.postCommentOnPr = exports.getUserEmail = exports.getPullRequestDetails = exports.getPullRequestComments = exports.getPreviousTitle = exports.deleteCommentOnPr = exports.createPrTitle = exports.createPrCodeReviews = void 0;
 var createPrCodeReviews_1 = __nccwpck_require__(8577);
 Object.defineProperty(exports, "createPrCodeReviews", ({ enumerable: true, get: function () { return createPrCodeReviews_1.createPrCodeReviews; } }));
 var createPrTitle_1 = __nccwpck_require__(2993);
@@ -41206,6 +41278,8 @@ var getPullRequestComments_1 = __nccwpck_require__(9755);
 Object.defineProperty(exports, "getPullRequestComments", ({ enumerable: true, get: function () { return getPullRequestComments_1.getPullRequestComments; } }));
 var getPullRequestDetails_1 = __nccwpck_require__(6191);
 Object.defineProperty(exports, "getPullRequestDetails", ({ enumerable: true, get: function () { return getPullRequestDetails_1.getPullRequestDetails; } }));
+var getUserEmail_1 = __nccwpck_require__(8552);
+Object.defineProperty(exports, "getUserEmail", ({ enumerable: true, get: function () { return getUserEmail_1.getUserEmail; } }));
 var postCommentOnPr_1 = __nccwpck_require__(9817);
 Object.defineProperty(exports, "postCommentOnPr", ({ enumerable: true, get: function () { return postCommentOnPr_1.postCommentOnPr; } }));
 var updatePrContent_1 = __nccwpck_require__(4545);

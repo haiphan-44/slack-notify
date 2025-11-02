@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updatePrTitle = exports.updatePrContent = exports.postCommentOnPr = exports.getPullRequestDetails = exports.getPullRequestComments = exports.getPreviousTitle = exports.deleteCommentOnPr = exports.createPrTitle = exports.createPrCodeReviews = void 0;
+exports.updatePrTitle = exports.updatePrContent = exports.postCommentOnPr = exports.getUserEmail = exports.getPullRequestDetails = exports.getPullRequestComments = exports.getPreviousTitle = exports.deleteCommentOnPr = exports.createPrTitle = exports.createPrCodeReviews = void 0;
 var createPrCodeReviews_1 = require("~/service/github/createPrCodeReviews");
 Object.defineProperty(exports, "createPrCodeReviews", { enumerable: true, get: function () { return createPrCodeReviews_1.createPrCodeReviews; } });
 var createPrTitle_1 = require("~/service/github/createPrTitle");
@@ -13,6 +13,8 @@ var getPullRequestComments_1 = require("~/service/github/getPullRequestComments"
 Object.defineProperty(exports, "getPullRequestComments", { enumerable: true, get: function () { return getPullRequestComments_1.getPullRequestComments; } });
 var getPullRequestDetails_1 = require("~/service/github/getPullRequestDetails");
 Object.defineProperty(exports, "getPullRequestDetails", { enumerable: true, get: function () { return getPullRequestDetails_1.getPullRequestDetails; } });
+var getUserEmail_1 = require("~/service/github/getUserEmail");
+Object.defineProperty(exports, "getUserEmail", { enumerable: true, get: function () { return getUserEmail_1.getUserEmail; } });
 var postCommentOnPr_1 = require("~/service/github/postCommentOnPr");
 Object.defineProperty(exports, "postCommentOnPr", { enumerable: true, get: function () { return postCommentOnPr_1.postCommentOnPr; } });
 var updatePrContent_1 = require("~/service/github/updatePrContent");

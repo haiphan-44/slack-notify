@@ -4,7 +4,7 @@ import { PullRequest, Repository } from '@octokit/webhooks-types'
 
 import { prTitleHandle } from '~/actions/prTitleHandle'
 import { formatToBaseName, getPullRequestEventType } from '~/helpers/helper'
-import { getPullRequestDetails } from '~/service/github/getPullRequestDetails'
+import { getUserEmail } from '~/service/github/getUserEmail'
 import * as slackService from '~/service/slack/index'
 import { convertCreatedPullRequestToSlackUser } from '~/service/slack/utils'
 import { IssueContext } from '~/types/type'
@@ -98,37 +98,37 @@ const handlePrMerged = async ({ pullRequest, repository }: { pullRequest: PullRe
   const slackChannelId = core.getInput('slack-channel-id')
   const slackBotToken = core.getInput('slack-bot-token')
 
-  const issueContext: IssueContext = {
-    owner: repository.owner.login,
-    repo: repository.name,
-    number: pullRequest.number
+  const prCreatorLogin = pullRequest.user?.login
+  if (!prCreatorLogin) {
+    core.error('Failed to get PR creator username')
+    return
   }
 
-  let fullPullRequest = pullRequest
-  try {
-    fullPullRequest = await getPullRequestDetails({
-      pullNumber: pullRequest.number,
-      issueContext
-    })
-    console.log(`Fetched PR details - changed_files: ${fullPullRequest.changed_files}`)
-  } catch (error) {
-    core.warning(`Failed to fetch PR details, using webhook payload: ${error}`)
-  }
+  const prCreatorEmail = await getUserEmail({ username: prCreatorLogin })
+  const prCreatorGithubUser = prCreatorEmail || formatToBaseName(prCreatorLogin)
 
   const createdPullRequestSlackUser = await convertCreatedPullRequestToSlackUser({
-    githubUser: formatToBaseName(fullPullRequest.user.login),
+    githubUser: prCreatorGithubUser,
     slackBotToken,
     slackChannelId
   })
 
-  const mergedBySlackUser = fullPullRequest.merged_by?.login
-    ? await convertCreatedPullRequestToSlackUser({
-        githubUser: formatToBaseName(fullPullRequest.merged_by.login),
-        slackBotToken,
-        slackChannelId
-      })
-    : undefined
+  const mergedBySlackUserLogin = pullRequest.merged_by?.login
+  if (!mergedBySlackUserLogin) {
+    core.error('Failed to get merged by username')
+    return
+  }
 
+  const mergedByEmail = await getUserEmail({ username: mergedBySlackUserLogin })
+  const mergedByGithubUser = mergedByEmail || formatToBaseName(mergedBySlackUserLogin)
+
+  const mergedBySlackUser = await convertCreatedPullRequestToSlackUser({
+    githubUser: mergedByGithubUser,
+    slackBotToken,
+    slackChannelId
+  })
+  core.warning(`prCreatorGithubUser: ${prCreatorGithubUser}`)
+  core.warning(`mergedByGithubUser: ${mergedByGithubUser}`)
   core.warning(`createdPullRequestSlackUser: ${createdPullRequestSlackUser}`)
   core.warning(`mergedBySlackUser: ${mergedBySlackUser}`)
   // Create Slack message on merged PR
@@ -136,7 +136,7 @@ const handlePrMerged = async ({ pullRequest, repository }: { pullRequest: PullRe
     channelId: slackChannelId,
     slackBotToken,
     createdPullRequestSlackUser,
-    pullRequest: fullPullRequest,
+    pullRequest,
     repository,
     mergedBySlackUser
   })
