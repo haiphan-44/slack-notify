@@ -141,8 +141,7 @@ const handleReviewComments = async ({
   const owner = process.env.GITHUB_REPOSITORY_OWNER!
   const repo = process.env.GITHUB_REPOSITORY!.split('/')[1]
   const octokit = new Octokit({
-    auth: process.env.GITHUB_TOKEN,
-    baseUrl: 'https://oss.navercorp.com/api/v3'
+    auth: process.env.GITHUB_TOKEN
   })
 
   const botName = 'github-actions[bot]'
