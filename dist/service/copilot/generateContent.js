@@ -39,6 +39,7 @@ const utils_1 = require("~/service/copilot/utils");
 const generateContent = async (copilotQueryBuilder, callback) => {
     const request = await (0, utils_1.generateAskRequest)(copilotQueryBuilder.history);
     const body = JSON.stringify(request);
+    console.log('body: ', body);
     const options = {
         hostname: 'api.githubcopilot.com',
         path: '/chat/completions',

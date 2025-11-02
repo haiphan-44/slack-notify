@@ -8,6 +8,7 @@ export const generateContent = async (
 ): Promise<string> => {
   const request = await generateAskRequest(copilotQueryBuilder.history)
   const body = JSON.stringify(request)
+  console.log('body: ', body)
   const options = {
     hostname: 'api.githubcopilot.com',
     path: '/chat/completions',

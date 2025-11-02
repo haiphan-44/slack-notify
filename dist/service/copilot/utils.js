@@ -61,6 +61,7 @@ const removeUntilData = (s) => {
     return index === -1 ? s : s.substring(index + 'data: '.length);
 };
 const getToken = () => {
+    console.log('copilot token: ', process.env.COPILOT_TOKEN);
     return new Promise((resolve, reject) => {
         const options = {
             hostname: 'api.github.com',

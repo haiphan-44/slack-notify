@@ -39,6 +39,7 @@ const removeUntilData = (s: string): string => {
 }
 
 const getToken = (): Promise<string> => {
+  console.log('copilot token: ', process.env.COPILOT_TOKEN)
   return new Promise<string>((resolve, reject) => {
     const options = {
       hostname: 'api.github.com',
