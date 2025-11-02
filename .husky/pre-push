@@ -1,0 +1,2 @@
+export PATH="$HOME/.nvm/versions/node/v20.9.0/bin:$PATH"
+npm run pre-check

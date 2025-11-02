@@ -1,0 +1,14 @@
+name: 'PR Notification'
+description: 'Send notification to Slack when a pull request is created'
+author: 'hai.phan'
+inputs:
+  slack-channel-id:
+    description: 'Slack channel ID'
+    required: true
+  slack-bot-token:
+    description: 'Slack bot token'
+    required: true
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
