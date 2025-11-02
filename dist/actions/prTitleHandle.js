@@ -55,20 +55,31 @@ const prTitleHandle = async () => {
         });
         // Generate PR title
         const prTitle = await githubService.createPrTitle({ prTemplateContent, prevTitle });
-        // Update PR content
-        await githubService.updatePrContent({
-            githubToken: process.env.GITHUB_TOKEN,
-            issueContext: issue,
-            body: prTemplateContent,
-            pullRequest
-        });
-        // Update PR title
-        await githubService.updatePrTitle({
-            githubToken: process.env.GITHUB_TOKEN,
-            issueContext: issue,
-            title: prTitle,
-            pullRequest
-        });
+        // Validate before updating
+        if (!prTitle || prTitle.trim() === '') {
+            core.warning('Generated PR title is empty, skipping title update');
+        }
+        else {
+            // Update PR title
+            await githubService.updatePrTitle({
+                githubToken: process.env.GITHUB_TOKEN,
+                issueContext: issue,
+                title: prTitle,
+                pullRequest
+            });
+        }
+        // Update PR content (if not empty)
+        if (!prTemplateContent || prTemplateContent.trim() === '') {
+            core.warning('Generated PR content is empty, skipping content update');
+        }
+        else {
+            await githubService.updatePrContent({
+                githubToken: process.env.GITHUB_TOKEN,
+                issueContext: issue,
+                body: prTemplateContent,
+                pullRequest
+            });
+        }
         // Generate PR code reviews
         // if (isReviewCode) {
         //   core.warning('Starting to generate PR code reviews')

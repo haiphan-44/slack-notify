@@ -37,18 +37,24 @@ exports.updatePrContent = void 0;
 const core = __importStar(require("@actions/core"));
 const github_1 = require("@actions/github");
 const updatePrContent = async ({ githubToken, issueContext, body, pullRequest }) => {
+    // Validate body is not empty
+    if (!body || body.trim() === '') {
+        core.warning('Skipping PR content update: body is empty');
+        return;
+    }
     core.warning('Updating PR content... with body: ' + JSON.stringify(body));
     try {
         const octokit = (0, github_1.getOctokit)(githubToken);
         await octokit.rest.pulls.update({
             owner: issueContext.owner,
             repo: issueContext.repo,
-            body,
+            body: body.trim(),
             pull_number: pullRequest.number
         });
     }
     catch (error) {
         console.error('Error updatePrContent', error);
+        throw error;
     }
 };
 exports.updatePrContent = updatePrContent;

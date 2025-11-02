@@ -71,6 +71,7 @@ const generateContent = async (copilotQueryBuilder, callback) => {
             });
         });
         req.on('error', (error) => {
+            console.log('🚀 --> error:', error);
             reject(error);
         });
         req.write(body);

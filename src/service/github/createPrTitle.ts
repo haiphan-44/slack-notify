@@ -1,3 +1,5 @@
+import * as core from '@actions/core'
+
 import { SYSTEM_PROMPT } from '~/service/copilot/constant'
 import { generateContent } from '~/service/copilot/generateContent'
 import { CopilotQueryBuilder } from '~/service/copilot/type'
@@ -51,9 +53,11 @@ export const createPrTitle = async ({
 
   copilotQueryBuilder.copilotRequest = request
 
+  let hasError = false
   const response = await generateContent(copilotQueryBuilder, (response, done, isError) => {
     if (isError) {
       console.log('Error: ', response)
+      hasError = true
       return
     }
 
@@ -61,5 +65,12 @@ export const createPrTitle = async ({
       return response
     }
   })
-  return response
+
+  // If generation failed or returned empty, use previous title as fallback
+  if (hasError || !response || response.trim() === '') {
+    core.warning('PR title generation failed or returned empty, using previous title as fallback')
+    return prevTitle || ''
+  }
+
+  return response.trim()
 }

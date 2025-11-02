@@ -42,6 +42,7 @@ export const generateContent = async (
     })
 
     req.on('error', (error) => {
+      console.log('🚀 --> error:', error)
       reject(error)
     })
 

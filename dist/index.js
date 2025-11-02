@@ -39679,20 +39679,31 @@ const prTitleHandle = async () => {
         });
         // Generate PR title
         const prTitle = await githubService.createPrTitle({ prTemplateContent, prevTitle });
-        // Update PR content
-        await githubService.updatePrContent({
-            githubToken: process.env.GITHUB_TOKEN,
-            issueContext: issue,
-            body: prTemplateContent,
-            pullRequest
-        });
-        // Update PR title
-        await githubService.updatePrTitle({
-            githubToken: process.env.GITHUB_TOKEN,
-            issueContext: issue,
-            title: prTitle,
-            pullRequest
-        });
+        // Validate before updating
+        if (!prTitle || prTitle.trim() === '') {
+            core.warning('Generated PR title is empty, skipping title update');
+        }
+        else {
+            // Update PR title
+            await githubService.updatePrTitle({
+                githubToken: process.env.GITHUB_TOKEN,
+                issueContext: issue,
+                title: prTitle,
+                pullRequest
+            });
+        }
+        // Update PR content (if not empty)
+        if (!prTemplateContent || prTemplateContent.trim() === '') {
+            core.warning('Generated PR content is empty, skipping content update');
+        }
+        else {
+            await githubService.updatePrContent({
+                githubToken: process.env.GITHUB_TOKEN,
+                issueContext: issue,
+                body: prTemplateContent,
+                pullRequest
+            });
+        }
         // Generate PR code reviews
         // if (isReviewCode) {
         //   core.warning('Starting to generate PR code reviews')
@@ -40073,6 +40084,7 @@ const generateContent = async (copilotQueryBuilder, callback) => {
             });
         });
         req.on('error', (error) => {
+            console.log('🚀 --> error:', error);
             reject(error);
         });
         req.write(body);
@@ -40702,12 +40714,46 @@ function splitObjectArrayByCharLimit(arr, maxChars = 64000, serialize = JSON.str
 /***/ }),
 
 /***/ 2993:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.createPrTitle = void 0;
+const core = __importStar(__nccwpck_require__(9999));
 const constant_1 = __nccwpck_require__(7792);
 const generateContent_1 = __nccwpck_require__(1894);
 const utils_1 = __nccwpck_require__(1891);
@@ -40749,16 +40795,23 @@ const createPrTitle = async ({ prTemplateContent, prevTitle }) => {
     };
     const request = await (0, utils_1.generateCopilotRequest)();
     copilotQueryBuilder.copilotRequest = request;
+    let hasError = false;
     const response = await (0, generateContent_1.generateContent)(copilotQueryBuilder, (response, done, isError) => {
         if (isError) {
             console.log('Error: ', response);
+            hasError = true;
             return;
         }
         if (done) {
             return response;
         }
     });
-    return response;
+    // If generation failed or returned empty, use previous title as fallback
+    if (hasError || !response || response.trim() === '') {
+        core.warning('PR title generation failed or returned empty, using previous title as fallback');
+        return prevTitle || '';
+    }
+    return response.trim();
 };
 exports.createPrTitle = createPrTitle;
 
@@ -41069,18 +41122,24 @@ exports.updatePrContent = void 0;
 const core = __importStar(__nccwpck_require__(9999));
 const github_1 = __nccwpck_require__(5380);
 const updatePrContent = async ({ githubToken, issueContext, body, pullRequest }) => {
+    // Validate body is not empty
+    if (!body || body.trim() === '') {
+        core.warning('Skipping PR content update: body is empty');
+        return;
+    }
     core.warning('Updating PR content... with body: ' + JSON.stringify(body));
     try {
         const octokit = (0, github_1.getOctokit)(githubToken);
         await octokit.rest.pulls.update({
             owner: issueContext.owner,
             repo: issueContext.repo,
-            body,
+            body: body.trim(),
             pull_number: pullRequest.number
         });
     }
     catch (error) {
         console.error('Error updatePrContent', error);
+        throw error;
     }
 };
 exports.updatePrContent = updatePrContent;
@@ -41089,25 +41148,65 @@ exports.updatePrContent = updatePrContent;
 /***/ }),
 
 /***/ 3046:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.updatePrTitle = void 0;
+const core = __importStar(__nccwpck_require__(9999));
 const github_1 = __nccwpck_require__(5380);
 const updatePrTitle = async ({ githubToken, issueContext, title, pullRequest }) => {
+    // Validate title is not empty
+    if (!title || title.trim() === '') {
+        core.warning('Skipping PR title update: title is empty');
+        return;
+    }
     try {
         const octokit = (0, github_1.getOctokit)(githubToken);
         await octokit.rest.pulls.update({
             owner: issueContext.owner,
             repo: issueContext.repo,
-            title,
+            title: title.trim(),
             pull_number: pullRequest.number
         });
     }
     catch (error) {
         console.error('Error updatePrTitle', error);
+        throw error;
     }
 };
 exports.updatePrTitle = updatePrTitle;
