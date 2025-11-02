@@ -37,7 +37,15 @@ export const getPullRequestEventType = (): PullRequestEventType => {
   }
 
   // Extract the action from the payload
-  const action = (payload as { action?: string })?.action
+  const action = (payload as { action?: string; pull_request?: { merged?: boolean } })?.action
+
+  if (action === 'closed') {
+    const pullRequest = (payload as { pull_request?: { merged?: boolean } })?.pull_request
+    if (pullRequest?.merged) {
+      return 'merge'
+    }
+    return 'closed'
+  }
 
   // Map the action to our type
   const validActions: PullRequestEventType[] = [

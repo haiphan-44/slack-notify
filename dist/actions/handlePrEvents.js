@@ -57,6 +57,9 @@ const handlePrEvents = async () => {
         case 'merge':
             await handlePrMerged({ pullRequest, repository });
             break;
+        case 'closed':
+            await handlePrClosed({ pullRequest, repository });
+            break;
         case null:
             core.error('Event type is null');
             break;
@@ -115,4 +118,7 @@ const handlePrMerged = async ({ pullRequest, repository }) => {
         repository,
         mergedBySlackUser
     });
+};
+const handlePrClosed = async ({ pullRequest, repository }) => {
+    console.log(`PR closed by user: ${pullRequest.user.login}`);
 };

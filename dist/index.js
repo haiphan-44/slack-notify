@@ -39557,6 +39557,9 @@ const handlePrEvents = async () => {
         case 'merge':
             await handlePrMerged({ pullRequest, repository });
             break;
+        case 'closed':
+            await handlePrClosed({ pullRequest, repository });
+            break;
         case null:
             core.error('Event type is null');
             break;
@@ -39615,6 +39618,9 @@ const handlePrMerged = async ({ pullRequest, repository }) => {
         repository,
         mergedBySlackUser
     });
+};
+const handlePrClosed = async ({ pullRequest, repository }) => {
+    console.log(`PR closed by user: ${pullRequest.user.login}`);
 };
 
 
@@ -39796,6 +39802,13 @@ const getPullRequestEventType = () => {
     }
     // Extract the action from the payload
     const action = payload?.action;
+    if (action === 'closed') {
+        const pullRequest = payload?.pull_request;
+        if (pullRequest?.merged) {
+            return 'merge';
+        }
+        return 'closed';
+    }
     // Map the action to our type
     const validActions = [
         'opened',

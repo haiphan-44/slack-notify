@@ -49,6 +49,13 @@ const getPullRequestEventType = () => {
     }
     // Extract the action from the payload
     const action = payload?.action;
+    if (action === 'closed') {
+        const pullRequest = payload?.pull_request;
+        if (pullRequest?.merged) {
+            return 'merge';
+        }
+        return 'closed';
+    }
     // Map the action to our type
     const validActions = [
         'opened',
