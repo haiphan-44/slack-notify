@@ -39538,6 +39538,7 @@ const core = __importStar(__nccwpck_require__(9999));
 const github = __importStar(__nccwpck_require__(5380));
 const prTitleHandle_1 = __nccwpck_require__(7659);
 const helper_1 = __nccwpck_require__(2727);
+const getPullRequestDetails_1 = __nccwpck_require__(6191);
 const slackService = __importStar(__nccwpck_require__(86));
 const utils_1 = __nccwpck_require__(7291);
 const handlePrEvents = async () => {
@@ -39595,14 +39596,30 @@ const handlePrMerged = async ({ pullRequest, repository }) => {
     }, null, 2));
     const slackChannelId = core.getInput('slack-channel-id');
     const slackBotToken = core.getInput('slack-bot-token');
+    const issueContext = {
+        owner: repository.owner.login,
+        repo: repository.name,
+        number: pullRequest.number
+    };
+    let fullPullRequest = pullRequest;
+    try {
+        fullPullRequest = await (0, getPullRequestDetails_1.getPullRequestDetails)({
+            pullNumber: pullRequest.number,
+            issueContext
+        });
+        console.log(`Fetched PR details - changed_files: ${fullPullRequest.changed_files}`);
+    }
+    catch (error) {
+        core.warning(`Failed to fetch PR details, using webhook payload: ${error}`);
+    }
     const createdPullRequestSlackUser = await (0, utils_1.convertCreatedPullRequestToSlackUser)({
-        githubUser: (0, helper_1.formatToBaseName)(pullRequest.user.login),
+        githubUser: (0, helper_1.formatToBaseName)(fullPullRequest.user.login),
         slackBotToken,
         slackChannelId
     });
-    const mergedBySlackUser = pullRequest.merged_by?.login
+    const mergedBySlackUser = fullPullRequest.merged_by?.login
         ? await (0, utils_1.convertCreatedPullRequestToSlackUser)({
-            githubUser: (0, helper_1.formatToBaseName)(pullRequest.merged_by.login),
+            githubUser: (0, helper_1.formatToBaseName)(fullPullRequest.merged_by.login),
             slackBotToken,
             slackChannelId
         })
@@ -39614,7 +39631,7 @@ const handlePrMerged = async ({ pullRequest, repository }) => {
         channelId: slackChannelId,
         slackBotToken,
         createdPullRequestSlackUser,
-        pullRequest,
+        pullRequest: fullPullRequest,
         repository,
         mergedBySlackUser
     });
@@ -41103,13 +41120,80 @@ exports.getPullRequestComments = getPullRequestComments;
 
 /***/ }),
 
+/***/ 6191:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getPullRequestDetails = void 0;
+const core = __importStar(__nccwpck_require__(9999));
+const github = __importStar(__nccwpck_require__(5380));
+/**
+ * Fetches full PR details including changed_files from GitHub API
+ * Webhook payloads don't include changed_files, so we need to fetch it
+ */
+const getPullRequestDetails = async ({ pullNumber, issueContext }) => {
+    const octokit = github.getOctokit(process.env.GITHUB_TOKEN || '');
+    const { owner, repo } = issueContext;
+    try {
+        const { data: pr } = await octokit.rest.pulls.get({
+            owner,
+            repo,
+            pull_number: pullNumber
+        });
+        return pr;
+    }
+    catch (error) {
+        core.error(`Failed to fetch PR details: ${error}`);
+        throw error;
+    }
+};
+exports.getPullRequestDetails = getPullRequestDetails;
+
+
+/***/ }),
+
 /***/ 3217:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.updatePrTitle = exports.updatePrContent = exports.postCommentOnPr = exports.getPullRequestComments = exports.getPreviousTitle = exports.deleteCommentOnPr = exports.createPrTitle = exports.createPrCodeReviews = void 0;
+exports.updatePrTitle = exports.updatePrContent = exports.postCommentOnPr = exports.getPullRequestDetails = exports.getPullRequestComments = exports.getPreviousTitle = exports.deleteCommentOnPr = exports.createPrTitle = exports.createPrCodeReviews = void 0;
 var createPrCodeReviews_1 = __nccwpck_require__(8577);
 Object.defineProperty(exports, "createPrCodeReviews", ({ enumerable: true, get: function () { return createPrCodeReviews_1.createPrCodeReviews; } }));
 var createPrTitle_1 = __nccwpck_require__(2993);
@@ -41120,6 +41204,8 @@ var getPreviousTitle_1 = __nccwpck_require__(320);
 Object.defineProperty(exports, "getPreviousTitle", ({ enumerable: true, get: function () { return getPreviousTitle_1.getPreviousTitle; } }));
 var getPullRequestComments_1 = __nccwpck_require__(9755);
 Object.defineProperty(exports, "getPullRequestComments", ({ enumerable: true, get: function () { return getPullRequestComments_1.getPullRequestComments; } }));
+var getPullRequestDetails_1 = __nccwpck_require__(6191);
+Object.defineProperty(exports, "getPullRequestDetails", ({ enumerable: true, get: function () { return getPullRequestDetails_1.getPullRequestDetails; } }));
 var postCommentOnPr_1 = __nccwpck_require__(9817);
 Object.defineProperty(exports, "postCommentOnPr", ({ enumerable: true, get: function () { return postCommentOnPr_1.postCommentOnPr; } }));
 var updatePrContent_1 = __nccwpck_require__(4545);
@@ -41447,7 +41533,7 @@ const createSlackMessageOnMergedPr = async ({ channelId, slackBotToken, pullRequ
                             type: 'header',
                             text: {
                                 type: 'plain_text',
-                                text: `:ncp: [${repository.name}] - :pull-request: ${pullRequest.title} - #${pullRequest.number}`,
+                                text: `:employmenthero: [${repository.name}] - :pr-closed: ${pullRequest.title} - #${pullRequest.number}`,
                                 emoji: true
                             }
                         },

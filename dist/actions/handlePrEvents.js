@@ -38,6 +38,7 @@ const core = __importStar(require("@actions/core"));
 const github = __importStar(require("@actions/github"));
 const prTitleHandle_1 = require("~/actions/prTitleHandle");
 const helper_1 = require("~/helpers/helper");
+const getPullRequestDetails_1 = require("~/service/github/getPullRequestDetails");
 const slackService = __importStar(require("~/service/slack/index"));
 const utils_1 = require("~/service/slack/utils");
 const handlePrEvents = async () => {
@@ -95,14 +96,30 @@ const handlePrMerged = async ({ pullRequest, repository }) => {
     }, null, 2));
     const slackChannelId = core.getInput('slack-channel-id');
     const slackBotToken = core.getInput('slack-bot-token');
+    const issueContext = {
+        owner: repository.owner.login,
+        repo: repository.name,
+        number: pullRequest.number
+    };
+    let fullPullRequest = pullRequest;
+    try {
+        fullPullRequest = await (0, getPullRequestDetails_1.getPullRequestDetails)({
+            pullNumber: pullRequest.number,
+            issueContext
+        });
+        console.log(`Fetched PR details - changed_files: ${fullPullRequest.changed_files}`);
+    }
+    catch (error) {
+        core.warning(`Failed to fetch PR details, using webhook payload: ${error}`);
+    }
     const createdPullRequestSlackUser = await (0, utils_1.convertCreatedPullRequestToSlackUser)({
-        githubUser: (0, helper_1.formatToBaseName)(pullRequest.user.login),
+        githubUser: (0, helper_1.formatToBaseName)(fullPullRequest.user.login),
         slackBotToken,
         slackChannelId
     });
-    const mergedBySlackUser = pullRequest.merged_by?.login
+    const mergedBySlackUser = fullPullRequest.merged_by?.login
         ? await (0, utils_1.convertCreatedPullRequestToSlackUser)({
-            githubUser: (0, helper_1.formatToBaseName)(pullRequest.merged_by.login),
+            githubUser: (0, helper_1.formatToBaseName)(fullPullRequest.merged_by.login),
             slackBotToken,
             slackChannelId
         })
@@ -114,7 +131,7 @@ const handlePrMerged = async ({ pullRequest, repository }) => {
         channelId: slackChannelId,
         slackBotToken,
         createdPullRequestSlackUser,
-        pullRequest,
+        pullRequest: fullPullRequest,
         repository,
         mergedBySlackUser
     });

@@ -4,6 +4,7 @@ import { PullRequest, Repository } from '@octokit/webhooks-types'
 
 import { prTitleHandle } from '~/actions/prTitleHandle'
 import { formatToBaseName, getPullRequestEventType } from '~/helpers/helper'
+import { getPullRequestDetails } from '~/service/github/getPullRequestDetails'
 import * as slackService from '~/service/slack/index'
 import { convertCreatedPullRequestToSlackUser } from '~/service/slack/utils'
 import { IssueContext } from '~/types/type'
@@ -97,15 +98,32 @@ const handlePrMerged = async ({ pullRequest, repository }: { pullRequest: PullRe
   const slackChannelId = core.getInput('slack-channel-id')
   const slackBotToken = core.getInput('slack-bot-token')
 
+  const issueContext: IssueContext = {
+    owner: repository.owner.login,
+    repo: repository.name,
+    number: pullRequest.number
+  }
+
+  let fullPullRequest = pullRequest
+  try {
+    fullPullRequest = await getPullRequestDetails({
+      pullNumber: pullRequest.number,
+      issueContext
+    })
+    console.log(`Fetched PR details - changed_files: ${fullPullRequest.changed_files}`)
+  } catch (error) {
+    core.warning(`Failed to fetch PR details, using webhook payload: ${error}`)
+  }
+
   const createdPullRequestSlackUser = await convertCreatedPullRequestToSlackUser({
-    githubUser: formatToBaseName(pullRequest.user.login),
+    githubUser: formatToBaseName(fullPullRequest.user.login),
     slackBotToken,
     slackChannelId
   })
 
-  const mergedBySlackUser = pullRequest.merged_by?.login
+  const mergedBySlackUser = fullPullRequest.merged_by?.login
     ? await convertCreatedPullRequestToSlackUser({
-        githubUser: formatToBaseName(pullRequest.merged_by.login),
+        githubUser: formatToBaseName(fullPullRequest.merged_by.login),
         slackBotToken,
         slackChannelId
       })
@@ -118,7 +136,7 @@ const handlePrMerged = async ({ pullRequest, repository }: { pullRequest: PullRe
     channelId: slackChannelId,
     slackBotToken,
     createdPullRequestSlackUser,
-    pullRequest,
+    pullRequest: fullPullRequest,
     repository,
     mergedBySlackUser
   })

@@ -24,7 +24,7 @@ const createSlackMessageOnMergedPr = async ({ channelId, slackBotToken, pullRequ
                             type: 'header',
                             text: {
                                 type: 'plain_text',
-                                text: `:ncp: [${repository.name}] - :pull-request: ${pullRequest.title} - #${pullRequest.number}`,
+                                text: `:employmenthero: [${repository.name}] - :pr-closed: ${pullRequest.title} - #${pullRequest.number}`,
                                 emoji: true
                             }
                         },
