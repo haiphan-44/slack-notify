@@ -40797,6 +40797,7 @@ const createPrTitle = async ({ prTemplateContent, prevTitle }) => {
     copilotQueryBuilder.copilotRequest = request;
     let hasError = false;
     const response = await (0, generateContent_1.generateContent)(copilotQueryBuilder, (response, done, isError) => {
+        console.log('🚀 --> response:', response);
         if (isError) {
             console.log('Error: ', response);
             hasError = true;

@@ -55,6 +55,7 @@ export const createPrTitle = async ({
 
   let hasError = false
   const response = await generateContent(copilotQueryBuilder, (response, done, isError) => {
+    console.log('🚀 --> response:', response)
     if (isError) {
       console.log('Error: ', response)
       hasError = true
